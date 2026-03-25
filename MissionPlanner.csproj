@@ -189,6 +189,7 @@
     <PackageReference Include="GDAL.Native">
       <Version>2.3.2</Version>
     </PackageReference>
+    <PackageReference Include="GeographicLib.NET" Version="2.3.2" />
     <PackageReference Include="GeoidHeightsDotNet">
       <Version>1.0.1</Version>
     </PackageReference>
