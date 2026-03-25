@@ -8,6 +8,13 @@ using static IronPython.Modules._ast;
 
 namespace MissionPlanner.Utilities
 {
+    /// <summary>
+    /// vor állomások szimulálása       - lista
+    /// vor jelgenerálás                - test
+    /// hátrametszés és poz számítás    - d
+    /// send external navigation        - feed a kalkulát szimulált vor jelekből (eredeti szimulált gps pos alapján melyik állomásokat látná milyen értékekkel számolásból)
+    /// validáló vezérlés a drón vezetése ez után mehet flytohere a térképen is
+    /// </summary>
     public class VORNavigation
     {
         private System.Timers.Timer _NavigationTimer;
@@ -78,12 +85,19 @@ namespace MissionPlanner.Utilities
     //        );
     //    }
 
+        public float X_Calculated { get; private set; }
+        public float Y_Calculated { get; private set; }
+        public float Z_Calculated { get; private set; }
+        public float Yaw_Calculated { get; private set; }
+
+        /// <summary>
+        /// 20-30Hz-n küldje a számított pozíciót
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void _NavigationTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
-
-
-            
-            //SendExternalPosition();
+            SendExternalPosition(X_Calculated, Y_Calculated, Z_Calculated, Yaw_Calculated);
         }
 
         public void SendToHome()
