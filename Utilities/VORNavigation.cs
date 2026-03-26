@@ -25,9 +25,23 @@ namespace MissionPlanner.Utilities
             _NavigationTimer.Interval = 50;
             _NavigationTimer.Elapsed += _NavigationTimer_Elapsed;
 
+            _LastRecivedAlt = MainV2.comPort.MAV.GuidedMode.z;
+            _LastRecivedLat = (float)(MainV2.comPort.MAV.GuidedMode.x / 1e7);
+            _LastRecivedLng = (float)(MainV2.comPort.MAV.GuidedMode.y / 1e7);
 
-
+            // ha letiltom a gps-t ezen még kéne tudonom a szimulált gps pozícióját
+            _RealGPSLat = MainV2.comPort.MAV.cs.lat;
+            _RealGPSLon = MainV2.comPort.MAV.cs.lng;
+            _RealGPSAlt = MainV2.comPort.MAV.cs.alt;
         }
+
+        private double _RealGPSLat;
+        private double _RealGPSLon;
+        private double _RealGPSAlt;
+
+        private float _LastRecivedLat;
+        private float _LastRecivedLng;
+        private float _LastRecivedAlt;
 
         private void SendExternalPosition(float p_X, float p_Y, float p_Z, float p_Yaw)
         {
@@ -59,6 +73,7 @@ namespace MissionPlanner.Utilities
                 );
         }
 
+        //fixme
     //    public static void VORToLatLon(
     //double lat1, double lon1, double radial1,
     //double lat2, double lon2, double radial2,
@@ -102,7 +117,7 @@ namespace MissionPlanner.Utilities
 
         public void SendToHome()
         {
-
+            MainV2.comPort.setMode("RTL");
         }
 
         public void TurnOffGPS()
@@ -124,6 +139,11 @@ namespace MissionPlanner.Utilities
 
             MainV2.comPort.setParam("EK3_SRC1_VELXY", 0);
             MainV2.comPort.setParam("EK3_SRC1_VELZ", 0);
+        }
+
+        public void EKFToOriginalSource()
+        {
+            //todo
         }
 
 
