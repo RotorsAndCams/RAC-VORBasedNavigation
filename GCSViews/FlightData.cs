@@ -1421,6 +1421,45 @@ namespace MissionPlanner.GCSViews
             ((Control) sender).Enabled = true;
         }
 
+
+        private VORNavigation _VORNav;
+        private void btn_VORSimulationStart_Click(object sender, EventArgs e)
+        {
+            //MessageBox.Show("VOR SIM");
+
+            //MainV2.comPort.setParam("GPS_TYPE", 0);
+            //MainV2.comPort.setParam("AHRS_GPS_USE", 0);
+
+            //double realLat = MainV2.comPort.MAV.cs.lat;
+            //double realLon = MainV2.comPort.MAV.cs.lng;
+            //double realAlt = MainV2.comPort.MAV.cs.alt;
+
+            //MessageBox.Show("POS: lat " + realLat + " lon " + realLon + " alt " + realAlt);
+
+
+
+            _VORNav = new VORNavigation();
+
+
+
+            //get closest vorstations
+
+            //harm gps
+            _VORNav.TurnOffGPS();
+
+
+
+            //feed gps
+            _VORNav.StartFeedPosition();
+
+
+            //rtl
+
+
+
+
+        }
+
         private void BUT_quickrtl_Click(object sender, EventArgs e)
         {
             try

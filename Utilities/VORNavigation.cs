@@ -18,6 +18,8 @@ namespace MissionPlanner.Utilities
     public class VORNavigation
     {
         private System.Timers.Timer _NavigationTimer;
+        private VORStationsHandler _VORStationsHandler;
+
 
         public VORNavigation()
         {
@@ -33,6 +35,11 @@ namespace MissionPlanner.Utilities
             _RealGPSLat = MainV2.comPort.MAV.cs.lat;
             _RealGPSLon = MainV2.comPort.MAV.cs.lng;
             _RealGPSAlt = MainV2.comPort.MAV.cs.alt;
+
+            _VORStationsHandler = new VORStationsHandler();
+
+
+
         }
 
         private double _RealGPSLat;
@@ -147,6 +154,16 @@ namespace MissionPlanner.Utilities
         }
 
 
+        public void StartFeedPosition()
+        {
+            _NavigationTimer.Start();
+        }
 
+        public void StopFeedPosition()
+        {
+
+            _NavigationTimer.Stop();
+
+        }
     }
 }

@@ -66,6 +66,7 @@ namespace MissionPlanner.GCSViews
             this.BUTrestartmission = new MissionPlanner.Controls.MyButton();
             this.CMB_mountmode = new System.Windows.Forms.ComboBox();
             this.BUT_quickrtl = new MissionPlanner.Controls.MyButton();
+            this.btn_VORSimulationStart = new MissionPlanner.Controls.MyButton();
             this.BUT_quickmanual = new MissionPlanner.Controls.MyButton();
             this.BUT_setwp = new MissionPlanner.Controls.MyButton();
             this.CMB_modes = new System.Windows.Forms.ComboBox();
@@ -759,6 +760,7 @@ namespace MissionPlanner.GCSViews
             this.tableLayoutPanel1.Controls.Add(this.CMB_modes, 0, 2);
             this.tableLayoutPanel1.Controls.Add(this.BUT_quickauto, 2, 0);
             this.tableLayoutPanel1.Controls.Add(this.BUT_setmode, 1, 2);
+            this.tableLayoutPanel1.Controls.Add(this.btn_VORSimulationStart, 0, 0);
             this.tableLayoutPanel1.Name = "tableLayoutPanel1";
             // 
             // BUT_SendMSG
@@ -1003,6 +1005,18 @@ namespace MissionPlanner.GCSViews
             this.toolTip1.SetToolTip(this.BUT_quickrtl, resources.GetString("BUT_quickrtl.ToolTip"));
             this.BUT_quickrtl.UseVisualStyleBackColor = true;
             this.BUT_quickrtl.Click += new System.EventHandler(this.BUT_quickrtl_Click);
+            // 
+            // btn_VORSimulationStart
+            // 
+            this.btn_VORSimulationStart.ColorMouseDown = System.Drawing.Color.Empty;
+            this.btn_VORSimulationStart.ColorMouseOver = System.Drawing.Color.Empty;
+            this.btn_VORSimulationStart.ColorNotEnabled = System.Drawing.Color.Empty;
+            resources.ApplyResources(this.BUT_quickrtl, "btn_VORSimulationStart");
+            this.btn_VORSimulationStart.Name = "btn_VORSimulationStart";
+            this.btn_VORSimulationStart.Text = "Start Simulation";
+            this.toolTip1.SetToolTip(this.BUT_quickrtl, resources.GetString("btn_VORSimulationStart.ToolTip"));
+            this.btn_VORSimulationStart.UseVisualStyleBackColor = true;
+            this.btn_VORSimulationStart.Click += new System.EventHandler(this.btn_VORSimulationStart_Click);
             // 
             // BUT_quickmanual
             // 
@@ -2936,6 +2950,7 @@ namespace MissionPlanner.GCSViews
         private Controls.MyButton BUT_setwp;
         private Controls.MyButton BUT_quickmanual;
         private Controls.MyButton BUT_quickrtl;
+        private Controls.MyButton btn_VORSimulationStart;
         private Controls.MyButton BUT_quickauto;
         private Controls.MyButton BUT_log2kml;
         private Controls.MyButton BUT_joystick;
