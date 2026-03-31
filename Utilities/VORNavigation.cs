@@ -70,6 +70,9 @@ namespace MissionPlanner.Utilities
             double dy = (p_Y - home.Lat) * 110540;
             double dz = -p_Z;  // NED: lefelé pozitív (ArduPilot így használja)
 
+            //ide kell még egy átlagoló szűrő
+
+            _dataForm.AppendGPSDataLine("sending: dx: " + dx + " dy: " + dy + " dz: " + dz);
 
             MainV2.comPort.sendPacket(
                 new MAVLink.mavlink_vision_position_estimate_t()
@@ -104,7 +107,7 @@ namespace MissionPlanner.Utilities
         private void _NavigationTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             CalculatePosition();
-            //SendExternalPosition(CalculatedLat, CalculatedLon, Z_Calculated, Yaw_Calculated);
+            SendExternalPosition(CalculatedLat, CalculatedLon, Z_Calculated, Yaw_Calculated);
             _dataForm.AppendGPSDataLine("External pos: lat: " + CalculatedLat + " ; lng: " + CalculatedLon);
         }
 
