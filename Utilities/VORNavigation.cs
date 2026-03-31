@@ -7,6 +7,9 @@ using System.Text;
 using System.Threading.Tasks;
 using static IronPython.Modules._ast;
 using GeographicLib;
+using System.Windows.Forms;
+using MissionPlanner.GCSViews;
+using NetTopologySuite.Utilities;
 
 namespace MissionPlanner.Utilities
 {
@@ -26,7 +29,7 @@ namespace MissionPlanner.Utilities
         public VORNavigation()
         {
             _NavigationTimer = new System.Timers.Timer();
-            _NavigationTimer.Interval = 300;
+            _NavigationTimer.Interval = 1000;
             _NavigationTimer.Elapsed += _NavigationTimer_Elapsed;
 
             _LastRecivedAlt = MainV2.comPort.MAV.GuidedMode.z;
@@ -39,6 +42,8 @@ namespace MissionPlanner.Utilities
             _RealGPSAlt = MainV2.comPort.MAV.cs.alt;
 
             _VORStationsHandler = new VORStationsHandler();
+
+            _dataForm = new VORDataForm();
 
 
 
@@ -60,7 +65,7 @@ namespace MissionPlanner.Utilities
 
             var home = MainV2.comPort.MAV.cs.HomeLocation;
 
-            // Latitude/Longitude különbségből méter
+            // Latitude/Longitude difference in meter
             double dx = (p_X - home.Lng) * 111320 * Math.Cos(home.Lat * Math.PI / 180.0);
             double dy = (p_Y - home.Lat) * 110540;
             double dz = -p_Z;  // NED: lefelé pozitív (ArduPilot így használja)
@@ -82,37 +87,14 @@ namespace MissionPlanner.Utilities
                 );
         }
 
-        //fixme
-    //    public static void VORToLatLon(
-    //double lat1, double lon1, double radial1,
-    //double lat2, double lon2, double radial2,
-    //out double latOut, out double lonOut)
-    //    {
-    //        // Radiánba
-    //        double r1 = radial1 * Math.PI / 180.0;
-    //        double r2 = radial2 * Math.PI / 180.0;
-
-    //        // Egyszerűsített vonal-metszés földgömbön (közelítő, de nagyon jó)
-    //        // Vonalak: VOR + bearing (radial + 180)
-    //        var brg1 = (radial1 + 180.0) % 360.0;
-    //        var brg2 = (radial2 + 180.0) % 360.0;
-
-    //        // Használjunk GeographicLib-et pontos metszéshez:
-    //        var g = new GeographicLib.Geodesic(GeographicLib.Geodesic.WGS84);
-
-    //        GeographicLib.GeodesicLine line1 = g.Line(lat1, lon1, brg1);
-    //        GeographicLib.GeodesicLine line2 = g.Line(lat2, lon2, brg2);
-
-    //        GeographicLib.Geodesic.Intersect(
-    //            ref line1, ref line2,
-    //            out latOut, out lonOut
-    //        );
-    //    }
-
         public float CalculatedLat { get; private set; }
         public float CalculatedLon { get; private set; }
         public float Z_Calculated { get; private set; }
         public float Yaw_Calculated { get; private set; }
+
+        VORDataForm _dataForm;
+
+        
 
         /// <summary>
         /// 20-30Hz-n küldje a számított pozíciót eredetileg, de már nem
@@ -122,17 +104,22 @@ namespace MissionPlanner.Utilities
         private void _NavigationTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             CalculatePosition();
-            SendExternalPosition(CalculatedLat, CalculatedLon, Z_Calculated, Yaw_Calculated);
+            //SendExternalPosition(CalculatedLat, CalculatedLon, Z_Calculated, Yaw_Calculated);
+            _dataForm.AppendGPSDataLine("External pos: lat: " + CalculatedLat + " ; lng: " + CalculatedLon);
         }
 
         private void CalculatePosition()
         {
-            //hibakezelés nincs???
+            //exception handling???
             var vor1 = TwoClosestStation[0];
             var vor2 = TwoClosestStation[1];
 
+            _dataForm.AppendLogDataLine("vor1: " + vor1.Name + " vor2" + vor2.Name);
+
             double radial1 = CalculateVORRadial(vor1.LatitudeWgs84, vor1.LongitudeWgs84, MainV2.comPort.MAV.cs.lat, MainV2.comPort.MAV.cs.lng);
             double radial2 = CalculateVORRadial(vor2.LatitudeWgs84, vor2.LongitudeWgs84, MainV2.comPort.MAV.cs.lat, MainV2.comPort.MAV.cs.lng);
+
+            _dataForm.AppendLogDataLine("radial1: " + radial1 + " radial2: " + radial2);
 
             double lat,lon;
 
@@ -149,6 +136,7 @@ namespace MissionPlanner.Utilities
                 CalculatedLon = (float)lon;
             }
 
+            _dataForm.AppendLogDataLine("calculated LAT: " + CalculatedLat + " calculated LNG: " + CalculatedLon);
         }
 
         public void SendToHome()
@@ -187,6 +175,9 @@ namespace MissionPlanner.Utilities
 
         public void StartFeedPosition()
         {
+            _dataForm.Show();
+            _dataForm.AppendLogDataLine("VOR simulation started");
+            //_dataForm.Calculating();
             _NavigationTimer.Start();
         }
 
@@ -241,13 +232,13 @@ namespace MissionPlanner.Utilities
     {
         double distance, azi1, azi2;
 
-        // Inverse geodézia: VOR → repülő
+        // Inverse geodesic: VOR → plane
         Geodesic.WGS84.Inverse(vorLat, vorLon, aircraftLat, aircraftLon,
                                out distance, out azi1, out azi2);
 
-        // A VOR a "bearing TO" értéket kapná a repülőről:
+        // VOR "bearing TO" would get from plane:
         // • azi1 = bearing FROM VOR TO airplane
-        // A radial pedig ennek az ellenkezője:
+        // the radial is the inverse:
         double radial = (azi1 + 180.0) % 360.0;
 
         if (radial < 0) radial += 360.0;
@@ -267,42 +258,42 @@ namespace MissionPlanner.Utilities
             double brg1 = (radial1 + 180.0) % 360.0;
             double brg2 = (radial2 + 180.0) % 360.0;
 
-            // geodetikus vonalak
+            // geodesic lines
             var line1 = geod.Line(vor1Lat, vor1Lon, brg1);
             var line2 = geod.Line(vor2Lat, vor2Lon, brg2);
 
-            // iteráció: keressük a két sugár metszését
+            // iteration: two radius intercept
             double s1 = 0;
             double s2 = 0;
-            const double step = 500; // 500 méteres lépés
+            const double step = 500; // 500 m step
             const double limit = 200000; // 200 km max
 
             for (int i = 0; i < (limit / step); i++)
             {
-                // VOR1 sugár pontja
+                // VOR1 radius point
                 var p1 = line1.Position(s1);
-                // VOR2 sugár pontja
+                // VOR2 radius point
                 var p2 = line2.Position(s2);
 
-                // távolság a két pont között
+                // distance of two point
                 double dist = geod.Inverse(p1.Latitude, p1.Longitude, p2.Latitude, p2.Longitude, out _, out _, out _);
 
-                // ha elég közeli → elfogadjuk
-                if (dist < 50) // 50 méteren belül
+                // close enough
+                if (dist < 50) // 50 m
                 {
                     outLat = (p1.Latitude + p2.Latitude) / 2.0;
                     outLon = (p1.Latitude + p2.Longitude) / 2.0;
                     return true;
                 }
 
-                // haladjunk tovább mindkét sugár mentén
+                // step throught in both radius
                 s1 += step;
                 s2 += step;
             }
 
             outLat = 0;
             outLon = 0;
-            return false; // nincs metszés
+            return false; // no intersect
         }
 
     #endregion

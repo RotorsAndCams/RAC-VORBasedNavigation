@@ -1456,7 +1456,7 @@ namespace MissionPlanner.GCSViews
             //_VORNav.EKFToExternalSource();
 
             //feed gps
-            //_VORNav.StartFeedPosition();
+            _VORNav.StartFeedPosition();
 
 
             //rtl: start simulate the homecoming with flytohere
