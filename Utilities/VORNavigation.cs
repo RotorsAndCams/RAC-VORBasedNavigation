@@ -1,30 +1,32 @@
 ﻿using BruTile.Wms;
+using GeographicLib;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using static IronPython.Modules._ast;
+using GeographicLib;
 
 namespace MissionPlanner.Utilities
 {
     /// <summary>
-    /// vor állomások szimulálása       - lista
-    /// vor jelgenerálás                - test
-    /// hátrametszés és poz számítás    - d
-    /// send external navigation        - feed a kalkulát szimulált vor jelekből (eredeti szimulált gps pos alapján melyik állomásokat látná milyen értékekkel számolásból)
-    /// validáló vezérlés a drón vezetése ez után mehet flytohere a térképen is
+    /// 
     /// </summary>
     public class VORNavigation
     {
         private System.Timers.Timer _NavigationTimer;
         private VORStationsHandler _VORStationsHandler;
 
+        public VORStationsHandler VORStationsHandler { get { return _VORStationsHandler; } }
+
+        public List<VORStation> TwoClosestStation { get { return GetTwoNearestVORs(this.VORStationsHandler.Stations, MainV2.comPort.MAV.cs.lat, MainV2.comPort.MAV.cs.lng); } }
+
 
         public VORNavigation()
         {
             _NavigationTimer = new System.Timers.Timer();
-            _NavigationTimer.Interval = 50;
+            _NavigationTimer.Interval = 300;
             _NavigationTimer.Elapsed += _NavigationTimer_Elapsed;
 
             _LastRecivedAlt = MainV2.comPort.MAV.GuidedMode.z;
@@ -107,19 +109,46 @@ namespace MissionPlanner.Utilities
     //        );
     //    }
 
-        public float X_Calculated { get; private set; }
-        public float Y_Calculated { get; private set; }
+        public float CalculatedLat { get; private set; }
+        public float CalculatedLon { get; private set; }
         public float Z_Calculated { get; private set; }
         public float Yaw_Calculated { get; private set; }
 
         /// <summary>
-        /// 20-30Hz-n küldje a számított pozíciót
+        /// 20-30Hz-n küldje a számított pozíciót eredetileg, de már nem
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
         private void _NavigationTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
-            SendExternalPosition(X_Calculated, Y_Calculated, Z_Calculated, Yaw_Calculated);
+            CalculatePosition();
+            SendExternalPosition(CalculatedLat, CalculatedLon, Z_Calculated, Yaw_Calculated);
+        }
+
+        private void CalculatePosition()
+        {
+            //hibakezelés nincs???
+            var vor1 = TwoClosestStation[0];
+            var vor2 = TwoClosestStation[1];
+
+            double radial1 = CalculateVORRadial(vor1.LatitudeWgs84, vor1.LongitudeWgs84, MainV2.comPort.MAV.cs.lat, MainV2.comPort.MAV.cs.lng);
+            double radial2 = CalculateVORRadial(vor2.LatitudeWgs84, vor2.LongitudeWgs84, MainV2.comPort.MAV.cs.lat, MainV2.comPort.MAV.cs.lng);
+
+            double lat,lon;
+
+
+            bool ok = VorIntersection(
+                vor1.LatitudeWgs84, vor1.LongitudeWgs84, radial1,
+                vor2.LatitudeWgs84, vor2.LongitudeWgs84, radial2,
+                out lat, out lon
+                );
+
+            if( ok )
+            {
+                CalculatedLat = (float)lat;
+                CalculatedLon = (float)lon;
+            }
+
         }
 
         public void SendToHome()
@@ -133,11 +162,7 @@ namespace MissionPlanner.Utilities
             MainV2.comPort.setParam("AHRS_GPS_USE", 0);
         }
 
-        public void TurnOnGPS()
-        {
-            MainV2.comPort.setParam("GPS_TYPE", 1);
-            MainV2.comPort.setParam("AHRS_GPS_USE", 1);
-        }
+        
 
         public void EKFToExternalSource()
         {
@@ -153,6 +178,12 @@ namespace MissionPlanner.Utilities
             //todo
         }
 
+        public void TurnOnGPS()
+        {
+            MainV2.comPort.setParam("GPS_TYPE", 1);
+            MainV2.comPort.setParam("AHRS_GPS_USE", 1);
+        }
+
 
         public void StartFeedPosition()
         {
@@ -165,5 +196,116 @@ namespace MissionPlanner.Utilities
             _NavigationTimer.Stop();
 
         }
-    }
+
+
+        #region VOR calculator methods
+
+        public static double DistanceMeters(double lat1, double lon1, double lat2, double lon2)
+        {
+            double R = 6371000; // Earth radius in meters
+            double dLat = (lat2 - lat1) * Math.PI / 180.0;
+            double dLon = (lon2 - lon1) * Math.PI / 180.0;
+
+            lat1 = lat1 * Math.PI / 180.0;
+            lat2 = lat2 * Math.PI / 180.0;
+
+            double a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                       Math.Sin(dLon / 2) * Math.Sin(dLon / 2) * Math.Cos(lat1) * Math.Cos(lat2);
+
+            double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            return R * c;
+        }
+
+
+        public static List<VORStation> GetTwoNearestVORs(
+            List<VORStation> stations,
+            double myLat,
+            double myLon)
+        {
+            return stations
+                .Select(st => new {
+                    Station = st,
+                    Dist = DistanceMeters(myLat, myLon, st.LatitudeWgs84, st.LongitudeWgs84)
+                })
+                .OrderBy(x => x.Dist)
+                .Take(2)
+                .Select(x => x.Station)
+                .ToList();
+        }
+
+        
+
+        public static double CalculateVORRadial(
+    double vorLat, double vorLon,
+    double aircraftLat, double aircraftLon)
+    {
+        double distance, azi1, azi2;
+
+        // Inverse geodézia: VOR → repülő
+        Geodesic.WGS84.Inverse(vorLat, vorLon, aircraftLat, aircraftLon,
+                               out distance, out azi1, out azi2);
+
+        // A VOR a "bearing TO" értéket kapná a repülőről:
+        // • azi1 = bearing FROM VOR TO airplane
+        // A radial pedig ennek az ellenkezője:
+        double radial = (azi1 + 180.0) % 360.0;
+
+        if (radial < 0) radial += 360.0;
+
+        return radial;
+        }
+
+
+        public static bool VorIntersection(
+    double vor1Lat, double vor1Lon, double radial1,
+    double vor2Lat, double vor2Lon, double radial2,
+    out double outLat, out double outLon)
+        {
+            var geod = Geodesic.WGS84;
+
+            // radial FROM → bearing TO
+            double brg1 = (radial1 + 180.0) % 360.0;
+            double brg2 = (radial2 + 180.0) % 360.0;
+
+            // geodetikus vonalak
+            var line1 = geod.Line(vor1Lat, vor1Lon, brg1);
+            var line2 = geod.Line(vor2Lat, vor2Lon, brg2);
+
+            // iteráció: keressük a két sugár metszését
+            double s1 = 0;
+            double s2 = 0;
+            const double step = 500; // 500 méteres lépés
+            const double limit = 200000; // 200 km max
+
+            for (int i = 0; i < (limit / step); i++)
+            {
+                // VOR1 sugár pontja
+                var p1 = line1.Position(s1);
+                // VOR2 sugár pontja
+                var p2 = line2.Position(s2);
+
+                // távolság a két pont között
+                double dist = geod.Inverse(p1.Latitude, p1.Longitude, p2.Latitude, p2.Longitude, out _, out _, out _);
+
+                // ha elég közeli → elfogadjuk
+                if (dist < 50) // 50 méteren belül
+                {
+                    outLat = (p1.Latitude + p2.Latitude) / 2.0;
+                    outLon = (p1.Latitude + p2.Longitude) / 2.0;
+                    return true;
+                }
+
+                // haladjunk tovább mindkét sugár mentén
+                s1 += step;
+                s2 += step;
+            }
+
+            outLat = 0;
+            outLon = 0;
+            return false; // nincs metszés
+        }
+
+    #endregion
+
+}
 }

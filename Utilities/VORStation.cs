@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using GeographicLib;
 using DotSpatial.Projections.ProjectedCategories;
+using System.Globalization;
 
 namespace MissionPlanner.Utilities
 {
@@ -29,8 +30,8 @@ namespace MissionPlanner.Utilities
             LonRaw = lonRaw;
             Frequency = freq;
 
-            LatitudeWgs84 = DmsToDecimal(latRaw);
-            LongitudeWgs84 = DmsToDecimal(lonRaw);
+            LatitudeWgs84 = double.Parse(latRaw, CultureInfo.InvariantCulture);//DmsToDecimal(latRaw);
+            LongitudeWgs84 = double.Parse(lonRaw, CultureInfo.InvariantCulture);//DmsToDecimal(lonRaw);
 
         }
 

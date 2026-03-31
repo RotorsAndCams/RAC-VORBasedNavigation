@@ -1421,39 +1421,45 @@ namespace MissionPlanner.GCSViews
             ((Control) sender).Enabled = true;
         }
 
-
+        private GMapOverlay VOROverlay = new GMapOverlay("VOROverlay");
         private VORNavigation _VORNav;
         private void btn_VORSimulationStart_Click(object sender, EventArgs e)
         {
-            //MessageBox.Show("VOR SIM");
-
-            //MainV2.comPort.setParam("GPS_TYPE", 0);
-            //MainV2.comPort.setParam("AHRS_GPS_USE", 0);
-
-            //double realLat = MainV2.comPort.MAV.cs.lat;
-            //double realLon = MainV2.comPort.MAV.cs.lng;
-            //double realAlt = MainV2.comPort.MAV.cs.alt;
-
-            //MessageBox.Show("POS: lat " + realLat + " lon " + realLon + " alt " + realAlt);
-
-
-
             _VORNav = new VORNavigation();
 
+            //get closest vorstations -> need to draw on map!!!!!!!!!!
+            var twoClosest = _VORNav.TwoClosestStation;
 
+            var marker1 = new GMarkerGoogle(new PointLatLng(twoClosest[0].LatitudeWgs84, twoClosest[0].LongitudeWgs84), GMarkerGoogleType.blue)
+            {
+                ToolTipText = "VOR station: ID: " + twoClosest[0].Id + ", Name: " + twoClosest[0].Name,
+                ToolTipMode = MarkerTooltipMode.Always
+            };
 
-            //get closest vorstations
+            var marker2 = new GMarkerGoogle(new PointLatLng(twoClosest[1].LatitudeWgs84, twoClosest[1].LongitudeWgs84), GMarkerGoogleType.red)
+            {
+                ToolTipText = "VOR station: ID: " + twoClosest[1].Id + ", Name: " + twoClosest[1].Name,
+                ToolTipMode = MarkerTooltipMode.Always
+            };
+
+            VOROverlay.Markers.Add(marker1);
+            VOROverlay.Markers.Add(marker2);
+
+            if (!MainV2.instance.FlightData.gMapControl1.Overlays.Contains(VOROverlay))
+                gMapControl1.Overlays.Add(VOROverlay);
+
+            gMapControl1.UpdateMarkerLocalPosition(marker1);
+            gMapControl1.UpdateMarkerLocalPosition(marker2);
 
             //harm gps
-            _VORNav.TurnOffGPS();
-
-
+            //_VORNav.TurnOffGPS();
+            //_VORNav.EKFToExternalSource();
 
             //feed gps
-            _VORNav.StartFeedPosition();
+            //_VORNav.StartFeedPosition();
 
 
-            //rtl
+            //rtl: start simulate the homecoming with flytohere
 
 
 
