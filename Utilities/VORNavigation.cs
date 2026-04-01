@@ -13,9 +13,7 @@ using NetTopologySuite.Utilities;
 
 namespace MissionPlanner.Utilities
 {
-    /// <summary>
-    /// 
-    /// </summary>
+    //--home=47.497913,19.040236,100,90 in simulator command
     public class VORNavigation
     {
         private System.Timers.Timer _NavigationTimer;
@@ -29,7 +27,7 @@ namespace MissionPlanner.Utilities
         public VORNavigation()
         {
             _NavigationTimer = new System.Timers.Timer();
-            _NavigationTimer.Interval = 1000;
+            _NavigationTimer.Interval = 3000;
             _NavigationTimer.Elapsed += _NavigationTimer_Elapsed;
 
             _LastRecivedAlt = MainV2.comPort.MAV.GuidedMode.z;
@@ -57,37 +55,101 @@ namespace MissionPlanner.Utilities
         private float _LastRecivedLng;
         private float _LastRecivedAlt;
 
+        double prevDx;
+        double prevDy;
+
         private void SendExternalPosition(float p_X, float p_Y, float p_Z, float p_Yaw)
         {
-
-            // A VOR-ból számolt lat/lon WGS84 → helyi NED-re kell konvertálni!
-            // Ez fontos! Az EKF helyi koordinátát vár, nem lat/lon-t.
-
             var home = MainV2.comPort.MAV.cs.HomeLocation;
 
-            // Latitude/Longitude difference in meter
             double dx = (p_X - home.Lng) * 111320 * Math.Cos(home.Lat * Math.PI / 180.0);
             double dy = (p_Y - home.Lat) * 110540;
-            double dz = -p_Z;  // NED: lefelé pozitív (ArduPilot így használja)
+            double dz = -(p_Z - home.Alt);  
 
-            //ide kell még egy átlagoló szűrő
+            Filter(ref dx, ref dy);
 
-            _dataForm.AppendGPSDataLine("sending: dx: " + dx + " dy: " + dy + " dz: " + dz);
+            double maxStep = 0.5; // max 2 m difference in one packet
+            dx = Clamp(dx, prevDx - maxStep, prevDx + maxStep);
+            dy = Clamp(dy, prevDy - maxStep, prevDy + maxStep);
+
+            prevDx = dx;
+            prevDy = dy;
+
+            if (Math.Abs(dx - prevDx) > 5 || Math.Abs(dy - prevDy) > 5)
+                return; // do not send bad calculation
+
+
+            _dataForm.AppendGPSDataLine("SENDING: dx: " + dx + " dy: " + dy + " dz: " + dz);
 
             MainV2.comPort.sendPacket(
                 new MAVLink.mavlink_vision_position_estimate_t()
                 {
                     usec = (ulong)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalMilliseconds * 1000,
-                    x = (float)dx,     // vagy lat hosszabbítás
+                    x = (float)dx,
                     y = (float)dy,
-                    z = (float)dz,
+                    z = -(float)(MainV2.comPort.MAV.cs.alt - home.Alt),
                     roll = 0,
                     pitch = 0,
-                    yaw = p_Yaw
+                    yaw = 0
                 },
                 MainV2.comPort.MAV.sysid,
                 MainV2.comPort.MAV.compid
                 );
+
+
+            if (RadialChanged != null)
+                RadialChanged(this, EventArgs.Empty);
+        }
+
+        //double smoothX = 0;
+        //double smoothY = 0;
+        //double smoothZ = 0;
+
+        ///// <summary>
+        ///// Low pass filter
+        ///// </summary>
+        ///// <param name="x"></param>
+        ///// <param name="y"></param>
+        ///// <param name="z"></param>
+        //public void FilterPosition(ref double x, ref double y, ref double z)
+        //{
+        //    const double alpha = 0.05;  // 15% új adat, 85% szűrt
+
+        //    smoothX = smoothX * (1 - alpha) + x * alpha;
+        //    smoothY = smoothY * (1 - alpha) + y * alpha;
+        //    smoothZ = smoothZ * (1 - alpha) + z * alpha;
+
+        //    x = smoothX;
+        //    y = smoothY;
+        //    z = smoothZ;
+        //}
+
+        public static double Clamp(double value, double min, double max)
+        {
+            if (value < min) return min;
+            if (value > max) return max;
+            return value;
+        }
+
+        private double fx, fy;
+        private bool init = false;
+
+        void Filter(ref double x, ref double y)
+        {
+            const double a = 0.02;  // 5% új adat, 95% simítás
+
+            if (!init)
+            {
+                fx = x;
+                fy = y;
+                init = true;
+            }
+
+            fx = fx * (1 - a) + x * a;
+            fy = fy * (1 - a) + y * a;
+
+            x = fx;
+            y = fy;
         }
 
         public float CalculatedLat { get; private set; }
@@ -107,9 +169,14 @@ namespace MissionPlanner.Utilities
         private void _NavigationTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             CalculatePosition();
-            SendExternalPosition(CalculatedLat, CalculatedLon, Z_Calculated, Yaw_Calculated);
+            SendExternalPosition(CalculatedLat, CalculatedLon, Z_Calculated, MainV2.comPort.MAV.cs.yaw);
             _dataForm.AppendGPSDataLine("External pos: lat: " + CalculatedLat + " ; lng: " + CalculatedLon);
         }
+
+        public double Radial1 { get; private set; }
+        public double Radial2 { get; private set; }
+
+        public event EventHandler RadialChanged;
 
         private void CalculatePosition()
         {
@@ -121,6 +188,9 @@ namespace MissionPlanner.Utilities
 
             double radial1 = CalculateVORRadial(vor1.LatitudeWgs84, vor1.LongitudeWgs84, MainV2.comPort.MAV.cs.lat, MainV2.comPort.MAV.cs.lng);
             double radial2 = CalculateVORRadial(vor2.LatitudeWgs84, vor2.LongitudeWgs84, MainV2.comPort.MAV.cs.lat, MainV2.comPort.MAV.cs.lng);
+
+            Radial1 = radial1;
+            Radial2 = radial2;
 
             _dataForm.AppendLogDataLine("radial1: " + radial1 + " radial2: " + radial2);
 
@@ -146,22 +216,34 @@ namespace MissionPlanner.Utilities
         {
             MainV2.comPort.setMode("RTL");
         }
+               
 
-        public void TurnOffGPS()
+        public void SetArduParametersForVORNav()
         {
+            //turn off gps
             MainV2.comPort.setParam("GPS_TYPE", 0);
             MainV2.comPort.setParam("AHRS_GPS_USE", 0);
-        }
 
-        
-
-        public void EKFToExternalSource()
-        {
+            //external source x-y - EKFToExternalSource
             MainV2.comPort.setParam("EK3_SRC1_POSXY", 6);
-            MainV2.comPort.setParam("EK3_SRC1_POSZ", 6);
+            MainV2.comPort.setParam("EK3_SRC1_POSZ", 1);
 
+            //EKFToExternalSource
             MainV2.comPort.setParam("EK3_SRC1_VELXY", 0);
             MainV2.comPort.setParam("EK3_SRC1_VELZ", 0);
+            //vision odometry
+            MainV2.comPort.setParam("VISO_TYPE", 1);
+
+            //ekf tolerance
+            MainV2.comPort.setParam("EK3_NOAID_THD ", 200);
+            MainV2.comPort.setParam("EK3_POSNE_M_NSE", 5.0);
+            MainV2.comPort.setParam("EK3_POSNE_E_NSE", 5.0);
+
+            MainV2.comPort.setParam("EK3_NOAID_THD", 900);
+            MainV2.comPort.setParam("EK3_GLITCH_RAD", 100);
+            MainV2.comPort.setParam("EK3_GLITCH_ACCEL", 100);
+
+
         }
 
         public void EKFToOriginalSource()

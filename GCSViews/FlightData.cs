@@ -1425,9 +1425,88 @@ namespace MissionPlanner.GCSViews
         private VORNavigation _VORNav;
         private void btn_VORSimulationStart_Click(object sender, EventArgs e)
         {
-            _VORNav = new VORNavigation();
+            if(_VORNav == null)
+            {
+                _VORNav = new VORNavigation();
+                _VORNav.RadialChanged += _VORNav_RadialChanged;
+            }
+                
 
-            //get closest vorstations -> need to draw on map!!!!!!!!!!
+            DisplayClosestVORStations();
+
+            //harm gps
+            _VORNav.SetArduParametersForVORNav();
+
+            //feed gps
+            _VORNav.StartFeedPosition();
+
+
+            //rtl: start simulate the homecoming with flytohere
+
+
+
+
+        }
+
+        private void _VORNav_RadialChanged(object sender, EventArgs e)
+        {
+            var twoClosest = _VORNav.TwoClosestStation;
+            DrawIntersectLine(twoClosest[0].LatitudeWgs84, twoClosest[0].LongitudeWgs84, _VORNav.Radial1);
+            DrawIntersectLine(twoClosest[1].LatitudeWgs84, twoClosest[1].LongitudeWgs84, _VORNav.Radial2);
+        }
+
+        public void DrawIntersectLine(double lat, double lon, double deg)
+        {
+
+            if (gMapControl1.InvokeRequired)
+            {
+                gMapControl1.Invoke(new Action<double, double, double>(DrawIntersectLine), lat, lon, deg);
+                return;
+            }
+
+
+            VOROverlay.Routes.Clear();
+            gMapControl1.Update();
+            gMapControl1.Refresh();
+            gMapControl1.Invalidate();
+
+            var p1 = new PointLatLng(lat, lon);
+
+            double distance = 500; //km
+            double earthRadius = 6371.0;
+            double bearingRad = deg * Math.PI / 180.0;
+
+
+            double latRad = lat * Math.PI / 180.0;
+            double lonRad = lon * Math.PI / 180.0;
+
+
+            double endLat = Math.Asin(
+                   Math.Sin(latRad) * Math.Cos(distance / earthRadius) +
+                   Math.Cos(latRad) * Math.Sin(distance / earthRadius) * Math.Sin(bearingRad)
+               );
+
+            double endLon = lonRad + Math.Atan2(
+                Math.Cos(bearingRad) * Math.Sin(distance / earthRadius) * Math.Cos(latRad),
+                Math.Cos(distance / earthRadius) - Math.Sin(latRad) * Math.Sin(endLat)
+            );
+
+            var p2 = new PointLatLng(endLat * 180.0 / Math.PI,
+                                     endLon * 180.0 / Math.PI);
+
+            GMapRoute radial = new GMapRoute(new List<PointLatLng>() { p1, p2 }, "radial");
+            radial.Stroke = new Pen(Color.Blue, 10);
+
+            VOROverlay.Routes.Add(radial);
+
+            gMapControl1.UpdateRouteLocalPosition(radial);
+
+        }
+
+        private void DisplayClosestVORStations()
+        {
+            //todo 
+
             var twoClosest = _VORNav.TwoClosestStation;
 
             var marker1 = new GMarkerGoogle(new PointLatLng(twoClosest[0].LatitudeWgs84, twoClosest[0].LongitudeWgs84), GMarkerGoogleType.blue)
@@ -1451,17 +1530,7 @@ namespace MissionPlanner.GCSViews
             gMapControl1.UpdateMarkerLocalPosition(marker1);
             gMapControl1.UpdateMarkerLocalPosition(marker2);
 
-            //harm gps
-            //_VORNav.TurnOffGPS();
-            //_VORNav.EKFToExternalSource();
-
-            //feed gps
-            _VORNav.StartFeedPosition();
-
-
-            //rtl: start simulate the homecoming with flytohere
-
-
+            //draw lines
 
 
         }
