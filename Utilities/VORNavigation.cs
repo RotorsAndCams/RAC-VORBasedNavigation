@@ -169,7 +169,7 @@ namespace MissionPlanner.Utilities
         private void _NavigationTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             CalculatePosition();
-            SendExternalPosition(CalculatedLat, CalculatedLon, Z_Calculated, MainV2.comPort.MAV.cs.yaw);
+            //SendExternalPosition(CalculatedLat, CalculatedLon, Z_Calculated, MainV2.comPort.MAV.cs.yaw);
             _dataForm.AppendGPSDataLine("External pos: lat: " + CalculatedLat + " ; lng: " + CalculatedLon);
         }
 
@@ -184,16 +184,18 @@ namespace MissionPlanner.Utilities
             var vor1 = TwoClosestStation[0];
             var vor2 = TwoClosestStation[1];
 
-            _dataForm.AppendLogDataLine("vor1: " + vor1.Name + " vor2" + vor2.Name);
+            //_dataForm.AppendLogDataLine("vor1: " + vor1.Name + " vor2" + vor2.Name);
 
-            double radial1 = CalculateVORRadial(vor1.LatitudeWgs84, vor1.LongitudeWgs84, MainV2.comPort.MAV.cs.lat, MainV2.comPort.MAV.cs.lng);
-            double radial2 = CalculateVORRadial(vor2.LatitudeWgs84, vor2.LongitudeWgs84, MainV2.comPort.MAV.cs.lat, MainV2.comPort.MAV.cs.lng);
+            double radial1 = CalculateAzimuth(vor1.LatitudeWgs84, vor1.LongitudeWgs84, MainV2.comPort.MAV.cs.lat, MainV2.comPort.MAV.cs.lng);
+            double radial2 = CalculateAzimuth(vor2.LatitudeWgs84, vor2.LongitudeWgs84, MainV2.comPort.MAV.cs.lat, MainV2.comPort.MAV.cs.lng);
 
             Radial1 = radial1;
             Radial2 = radial2;
 
             _dataForm.AppendLogDataLine("radial1: " + radial1 + " radial2: " + radial2);
 
+
+            
             double lat,lon;
 
 
@@ -208,7 +210,7 @@ namespace MissionPlanner.Utilities
                 CalculatedLat = (float)lat;
                 CalculatedLon = (float)lon;
             }
-
+            _dataForm.AppendLogDataLine("Drone: " + MainV2.comPort.MAV.cs.lat + " calc: " + CalculatedLat);
             _dataForm.AppendLogDataLine("calculated LAT: " + CalculatedLat + " calculated LNG: " + CalculatedLon);
         }
 
@@ -329,6 +331,20 @@ namespace MissionPlanner.Utilities
         if (radial < 0) radial += 360.0;
 
         return radial;
+        }
+
+        public static double CalculateAzimuth(
+    double myLat, double myLon,
+    double vorLat, double vorLon)
+        {
+            double distance, azi1, azi2;
+
+            Geodesic.WGS84.Inverse(myLat, myLon, vorLat, vorLon,
+                                   out distance, out azi1, out azi2);
+
+            if (azi1 < 0) azi1 += 360.0;
+
+            return azi1;
         }
 
 

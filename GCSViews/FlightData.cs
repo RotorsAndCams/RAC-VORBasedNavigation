@@ -1435,8 +1435,8 @@ namespace MissionPlanner.GCSViews
             DisplayClosestVORStations();
 
             //harm gps
-            _VORNav.SetArduParametersForVORNav();
-
+            //_VORNav.SetArduParametersForVORNav();
+            
             //feed gps
             _VORNav.StartFeedPosition();
 
