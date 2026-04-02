@@ -50,6 +50,16 @@ namespace MissionPlanner.GCSViews
             rtb_LogData.ScrollToCaret();
         }
 
+        private void btn_Error_Click(object sender, EventArgs e)
+        {
+            MainV2.instance.FlightData._VORNav.AddRandomErrorToBearing = !MainV2.instance.FlightData._VORNav.AddRandomErrorToBearing;
+        }
+
+        private void btn_Filtering_Click(object sender, EventArgs e)
+        {
+            MainV2.instance.FlightData._VORNav.UseFiltering = !MainV2.instance.FlightData._VORNav.UseFiltering;
+        }
+
         //int calcDotCount = 0;
 
         //public void Calculating()

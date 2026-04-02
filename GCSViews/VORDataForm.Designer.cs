@@ -31,6 +31,8 @@
             this.rtb_GPSData = new System.Windows.Forms.RichTextBox();
             this.tlp_Base = new System.Windows.Forms.TableLayoutPanel();
             this.rtb_LogData = new System.Windows.Forms.RichTextBox();
+            this.btn_Error = new System.Windows.Forms.Button();
+            this.btn_Filtering = new System.Windows.Forms.Button();
             this.tlp_Base.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -45,24 +47,27 @@
             this.rtb_GPSData.Name = "rtb_GPSData";
             this.rtb_GPSData.ReadOnly = true;
             this.rtb_GPSData.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
-            this.rtb_GPSData.Size = new System.Drawing.Size(609, 208);
+            this.rtb_GPSData.Size = new System.Drawing.Size(929, 240);
             this.rtb_GPSData.TabIndex = 0;
             this.rtb_GPSData.Text = "Simulation started";
             this.rtb_GPSData.WordWrap = false;
             // 
             // tlp_Base
             // 
-            this.tlp_Base.ColumnCount = 1;
-            this.tlp_Base.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.tlp_Base.ColumnCount = 2;
+            this.tlp_Base.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 80F));
+            this.tlp_Base.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 20F));
+            this.tlp_Base.Controls.Add(this.btn_Error, 1, 0);
             this.tlp_Base.Controls.Add(this.rtb_LogData, 0, 1);
             this.tlp_Base.Controls.Add(this.rtb_GPSData, 0, 0);
+            this.tlp_Base.Controls.Add(this.btn_Filtering, 1, 1);
             this.tlp_Base.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tlp_Base.Location = new System.Drawing.Point(0, 0);
             this.tlp_Base.Name = "tlp_Base";
             this.tlp_Base.RowCount = 2;
             this.tlp_Base.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.tlp_Base.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.tlp_Base.Size = new System.Drawing.Size(615, 429);
+            this.tlp_Base.Size = new System.Drawing.Size(1169, 493);
             this.tlp_Base.TabIndex = 1;
             // 
             // rtb_LogData
@@ -72,20 +77,40 @@
             this.rtb_LogData.Dock = System.Windows.Forms.DockStyle.Fill;
             this.rtb_LogData.Font = new System.Drawing.Font("Microsoft Sans Serif", 10.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
             this.rtb_LogData.ForeColor = System.Drawing.Color.Crimson;
-            this.rtb_LogData.Location = new System.Drawing.Point(3, 217);
+            this.rtb_LogData.Location = new System.Drawing.Point(3, 249);
             this.rtb_LogData.Name = "rtb_LogData";
             this.rtb_LogData.ReadOnly = true;
             this.rtb_LogData.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
-            this.rtb_LogData.Size = new System.Drawing.Size(609, 209);
+            this.rtb_LogData.Size = new System.Drawing.Size(929, 241);
             this.rtb_LogData.TabIndex = 2;
             this.rtb_LogData.Text = "...";
             this.rtb_LogData.WordWrap = false;
+            // 
+            // btn_Error
+            // 
+            this.btn_Error.Location = new System.Drawing.Point(938, 3);
+            this.btn_Error.Name = "btn_Error";
+            this.btn_Error.Size = new System.Drawing.Size(171, 136);
+            this.btn_Error.TabIndex = 2;
+            this.btn_Error.Text = "Simulate VOR bearing error";
+            this.btn_Error.UseVisualStyleBackColor = true;
+            this.btn_Error.Click += new System.EventHandler(this.btn_Error_Click);
+            // 
+            // btn_Filtering
+            // 
+            this.btn_Filtering.Location = new System.Drawing.Point(938, 249);
+            this.btn_Filtering.Name = "btn_Filtering";
+            this.btn_Filtering.Size = new System.Drawing.Size(171, 120);
+            this.btn_Filtering.TabIndex = 3;
+            this.btn_Filtering.Text = "Enable Filtering";
+            this.btn_Filtering.UseVisualStyleBackColor = true;
+            this.btn_Filtering.Click += new System.EventHandler(this.btn_Filtering_Click);
             // 
             // VORDataForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(615, 429);
+            this.ClientSize = new System.Drawing.Size(1169, 493);
             this.Controls.Add(this.tlp_Base);
             this.Name = "VORDataForm";
             this.Text = "VORDataForm";
@@ -99,5 +124,7 @@
         private System.Windows.Forms.RichTextBox rtb_GPSData;
         private System.Windows.Forms.TableLayoutPanel tlp_Base;
         private System.Windows.Forms.RichTextBox rtb_LogData;
+        private System.Windows.Forms.Button btn_Error;
+        private System.Windows.Forms.Button btn_Filtering;
     }
 }

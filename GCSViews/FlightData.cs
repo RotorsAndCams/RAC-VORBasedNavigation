@@ -32,6 +32,7 @@ using ZedGraph;
 using LogAnalyzer = MissionPlanner.Utilities.LogAnalyzer;
 using TableLayoutPanelCellPosition = System.Windows.Forms.TableLayoutPanelCellPosition;
 using UnauthorizedAccessException = System.UnauthorizedAccessException;
+using SixLabors.ImageSharp.PixelFormats;
 
 // written by michael oborne
 
@@ -1422,7 +1423,7 @@ namespace MissionPlanner.GCSViews
         }
 
         private GMapOverlay VOROverlay = new GMapOverlay("VOROverlay");
-        private VORNavigation _VORNav;
+        public VORNavigation _VORNav;
         private void btn_VORSimulationStart_Click(object sender, EventArgs e)
         {
             if(_VORNav == null)
@@ -1436,23 +1437,70 @@ namespace MissionPlanner.GCSViews
 
             //harm gps
             //_VORNav.SetArduParametersForVORNav();
-            
+            MainV2.comPort.setParam("GPS_TYPE", 1);
+            MainV2.comPort.setParam("AHRS_GPS_USE", 1);
+            MainV2.comPort.setParam("VISO_TYPE", 0);
+            MainV2.comPort.setParam("VISO_TYPE", 0);
+            MainV2.comPort.setParam("EK3_SRC1_POSXY", 3);
+            MainV2.comPort.setParam("EK3_SRC1_POSZ", 3);
+            //EK3_SRC1_POSXY = 3   ; 3 = GPS
+            //EK3_SRC1_POSZ  = 3   ; 3 = GPS
+
             //feed gps
             _VORNav.StartFeedPosition();
 
 
             //rtl: start simulate the homecoming with flytohere
 
-
-
-
         }
 
         private void _VORNav_RadialChanged(object sender, EventArgs e)
         {
             var twoClosest = _VORNav.TwoClosestStation;
-            DrawIntersectLine(twoClosest[0].LatitudeWgs84, twoClosest[0].LongitudeWgs84, _VORNav.Radial1);
-            DrawIntersectLine(twoClosest[1].LatitudeWgs84, twoClosest[1].LongitudeWgs84, _VORNav.Radial2);
+            //DrawIntersectLine(twoClosest[0].LatitudeWgs84, twoClosest[0].LongitudeWgs84, _VORNav.Radial1);
+            //DrawIntersectLine(twoClosest[1].LatitudeWgs84, twoClosest[1].LongitudeWgs84, _VORNav.Radial2);
+
+            if (gMapControl1.InvokeRequired)
+            {
+
+                gMapControl1.Invoke(new Action(() =>
+                {
+                    VOROverlay.Routes.Clear();
+                    gMapControl1.Refresh();
+                }));
+
+            }
+
+
+
+            DrawLineBetweenPoints(twoClosest[0].LatitudeWgs84, twoClosest[0].LongitudeWgs84, MainV2.comPort.MAV.cs.lat, MainV2.comPort.MAV.cs.lng, Color.DarkBlue);
+            DrawLineBetweenPoints(twoClosest[1].LatitudeWgs84, twoClosest[1].LongitudeWgs84, MainV2.comPort.MAV.cs.lat, MainV2.comPort.MAV.cs.lng, Color.DarkBlue);
+
+            DrawLineBetweenPoints(twoClosest[0].LatitudeWgs84, twoClosest[0].LongitudeWgs84, _VORNav.CalculatedLat, _VORNav.CalculatedLon, Color.DarkGreen);
+            DrawLineBetweenPoints(twoClosest[1].LatitudeWgs84, twoClosest[1].LongitudeWgs84, _VORNav.CalculatedLat, _VORNav.CalculatedLon, Color.DarkGreen);
+        }
+
+        public void DrawLineBetweenPoints(double lat1, double lon1, double lat2, double lon2, Color color)
+        {
+            if (gMapControl1.InvokeRequired)
+            {
+                gMapControl1.Invoke(new Action<double, double, double, double, Color>(DrawLineBetweenPoints),
+                                    lat1, lon1, lat2, lon2, color);
+                return;
+            }
+
+            var p1 = new PointLatLng(lat1, lon1);
+            var p2 = new PointLatLng(lat2, lon2);
+
+            List<PointLatLng> pts = new List<PointLatLng>() { p1, p2 };
+
+            var route = new GMapRoute(pts, "two_point_line");
+            route.Stroke = new Pen(color, 5);
+
+            VOROverlay.Routes.Add(route);
+
+            gMapControl1.UpdateRouteLocalPosition(route);
+            gMapControl1.Refresh();
         }
 
         public void DrawIntersectLine(double lat, double lon, double deg)
