@@ -13,7 +13,8 @@ using NetTopologySuite.Utilities;
 
 namespace MissionPlanner.Utilities
 {
-    //--home=47.497913,19.040236,100,90 in simulator command
+    //--home=47.497913,19.040236,100,90 in simulator command  47.500103, 19.201489
+    //--home=47.500103,19.201489,100,90
     public class VORNavigation
     {
         private System.Timers.Timer _NavigationTimer;
@@ -50,11 +51,13 @@ namespace MissionPlanner.Utilities
 
         VORDataForm _dataForm;
 
+        VORGPSMovingAvarage _movingAvarageLAT;
+        VORGPSMovingAvarage _movingAvarageLNG;
 
         public VORNavigation()
         {
             _NavigationTimer = new System.Timers.Timer();
-            _NavigationTimer.Interval = 3000;
+            _NavigationTimer.Interval = 1000;
             _NavigationTimer.Elapsed += _NavigationTimer_Elapsed;
 
             _LastRecivedAlt = MainV2.comPort.MAV.GuidedMode.z;
@@ -70,7 +73,10 @@ namespace MissionPlanner.Utilities
             _dataForm = new VORDataForm();
 
             AddRandomErrorToBearing = false;
+            UseFiltering = false;
 
+            _movingAvarageLAT = new VORGPSMovingAvarage(50);
+            _movingAvarageLNG = new VORGPSMovingAvarage(50);
         }
 
         private void SendExternalPosition(float p_X, float p_Y, float p_Z, float p_Yaw)
@@ -188,17 +194,33 @@ namespace MissionPlanner.Utilities
                 Radial2 += RandomBearingError();
             }
 
-            _dataForm.AppendLogDataLine("radial1: " + Radial1 + " radial2: " + Radial2);
+            _dataForm.AppendLogDataLine("Measured radial 1: " + Radial1 + " Measured radial 2: " + Radial2);
 
             double lat,lon;
 
             //hiányzik a hibakezelés ha nem számolta ki mert nem sikerült akkor inkább maradjon az előző
             BearingIntersectionSpherical(vor1.LatitudeWgs84, vor1.LongitudeWgs84, Radial1, vor2.LatitudeWgs84, vor2.LongitudeWgs84, Radial2, out lat, out lon);
 
-            CalculatedLat = (float)lat;
-            CalculatedLon = (float)lon;
+            // simított érték:
+            double smoothLat = _movingAvarageLAT.Update(lat);
+            double smoothLon = _movingAvarageLNG.Update(lon);
+
+            if (UseFiltering)
+            {
+                CalculatedLat = (float)smoothLat;
+                CalculatedLon = (float)smoothLon;
+            }
+            else
+            {
+                CalculatedLat = (float)lat;
+                CalculatedLon = (float)lon;
+            }
+
             
-            _dataForm.AppendLogDataLine("calculated LAT: " + CalculatedLat + " calculated LNG: " + CalculatedLon);
+
+
+            
+            _dataForm.AppendLogDataLine("Calculated LAT: " + CalculatedLat + " Calculated LNG: " + CalculatedLon);
         }
 
         public void SendToHome()
