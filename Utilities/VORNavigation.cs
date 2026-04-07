@@ -51,6 +51,11 @@ namespace MissionPlanner.Utilities
 
         VORDataForm _dataForm;
 
+        public bool AddRandomErrorToBearing { get; set; }
+        public bool UseFiltering { get; set; }
+        public bool SendExternalDataToFC {  get; set; }
+        public bool ParamsToExtPosSet {  get; set; }
+
         VORGPSMovingAvarage _movingAvarageLAT;
         VORGPSMovingAvarage _movingAvarageLNG;
 
@@ -74,9 +79,11 @@ namespace MissionPlanner.Utilities
 
             AddRandomErrorToBearing = false;
             UseFiltering = false;
+            SendExternalDataToFC = false;
+            ParamsToExtPosSet = false;
 
-            _movingAvarageLAT = new VORGPSMovingAvarage(50);
-            _movingAvarageLNG = new VORGPSMovingAvarage(50);
+            _movingAvarageLAT = new VORGPSMovingAvarage(25);
+            _movingAvarageLNG = new VORGPSMovingAvarage(25);
         }
 
         private void SendExternalPosition(float p_X, float p_Y, float p_Z, float p_Yaw)
@@ -89,24 +96,21 @@ namespace MissionPlanner.Utilities
 
             Filter(ref dx, ref dy);
 
-            double maxStep = 0.5; // max 2 m difference in one packet
+            double maxStep = 0.5; // max half m difference in one packet
             dx = Clamp(dx, prevDx - maxStep, prevDx + maxStep);
             dy = Clamp(dy, prevDy - maxStep, prevDy + maxStep);
-
-            
 
             if (Math.Abs(dx - prevDx) > 5 || Math.Abs(dy - prevDy) > 5)
                 return; // do not send bad calculation
 
-
             prevDx = dx;
             prevDy = dy;
 
+            if(!SendExternalDataToFC)
+                return;
+
             _dataForm.AppendGPSDataLine("SENDING: dx: " + p_X + " dy: " + p_Y + " dz: " + dz);
 
-
-
-            return;
             MainV2.comPort.sendPacket(
                 new MAVLink.mavlink_vision_position_estimate_t()
                 {
@@ -174,8 +178,6 @@ namespace MissionPlanner.Utilities
             return (rnd.NextDouble() * 2.0 * maxError) - maxError;
         }
 
-        public bool AddRandomErrorToBearing { get; set; }
-        public bool UseFiltering { get; set; }
 
         private void CalculatePosition()
         {
@@ -194,7 +196,7 @@ namespace MissionPlanner.Utilities
                 Radial2 += RandomBearingError();
             }
 
-            _dataForm.AppendLogDataLine("Measured radial 1: " + Radial1 + " Measured radial 2: " + Radial2);
+            _dataForm.AppendLogDataLine("Measured radial 1: " + (((Radial1 + 180.0) + 720) % 360) + " Measured radial 2: " + (((Radial2 + 180.0) + 720 ) % 360));
 
             double lat,lon;
 
@@ -216,11 +218,12 @@ namespace MissionPlanner.Utilities
                 CalculatedLon = (float)lon;
             }
 
-            
 
-
-            
             _dataForm.AppendLogDataLine("Calculated LAT: " + CalculatedLat + " Calculated LNG: " + CalculatedLon);
+
+            //write error from real and calculated pos
+            var dist = DistanceMeters(CalculatedLat, CalculatedLon, MainV2.comPort.MAV.cs.lat, MainV2.comPort.MAV.cs.lng);
+            _dataForm.AppendLogDataLine("Distance error in meters: " + dist);
         }
 
         public void SendToHome()

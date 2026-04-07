@@ -43,7 +43,7 @@ namespace MissionPlanner.GCSViews
                 rtb_LogData.Invoke(new Action<string>(AppendLogDataLine), p_NewLine);
                 return;
             }
-
+             
             rtb_LogData.AppendText(p_NewLine + Environment.NewLine);
             rtb_LogData.AppendText("------------------------------" + Environment.NewLine);
             rtb_LogData.SelectionStart = rtb_LogData.Text.Length;
@@ -58,6 +58,16 @@ namespace MissionPlanner.GCSViews
         private void btn_Filtering_Click(object sender, EventArgs e)
         {
             MainV2.instance.FlightData._VORNav.UseFiltering = !MainV2.instance.FlightData._VORNav.UseFiltering;
+        }
+
+        private void btn_SendExtPosToFC_Click(object sender, EventArgs e)
+        {
+            MainV2.instance.FlightData._VORNav.SendExternalDataToFC = !MainV2.instance.FlightData._VORNav.SendExternalDataToFC;
+        }
+
+        private void btn_SetArduParametersTOExtNAV_Click(object sender, EventArgs e)
+        {
+
         }
 
         //int calcDotCount = 0;
