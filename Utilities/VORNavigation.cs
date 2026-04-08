@@ -201,7 +201,7 @@ namespace MissionPlanner.Utilities
             double lat,lon;
 
             //hiányzik a hibakezelés ha nem számolta ki mert nem sikerült akkor inkább maradjon az előző
-            BearingIntersectionSpherical(vor1.LatitudeWgs84, vor1.LongitudeWgs84, Radial1, vor2.LatitudeWgs84, vor2.LongitudeWgs84, Radial2, out lat, out lon);
+            BearingIntersectionGlobal(vor1.LatitudeWgs84, vor1.LongitudeWgs84, Radial1, vor2.LatitudeWgs84, vor2.LongitudeWgs84, Radial2, out lat, out lon);
 
             // simított érték:
             double smoothLat = _movingAvarageLAT.Update(lat);
@@ -217,7 +217,6 @@ namespace MissionPlanner.Utilities
                 CalculatedLat = (float)lat;
                 CalculatedLon = (float)lon;
             }
-
 
             _dataForm.AppendLogDataLine("Calculated LAT: " + CalculatedLat + " Calculated LNG: " + CalculatedLon);
 
@@ -258,7 +257,6 @@ namespace MissionPlanner.Utilities
 
             //forget viso
             MainV2.comPort.setParam("VISO_TYPE", 0);
-
         }
 
         public void TurnOnGPS()
@@ -360,23 +358,16 @@ namespace MissionPlanner.Utilities
 
         #endregion
 
+        static double DegToRad(double d) => d * Math.PI / 180.0;
+        static double RadToDeg(double r) => r * 180.0 / Math.PI;
 
-        double DegToRad(double d) => d * Math.PI / 180.0;
-        double RadToDeg(double r) => r * 180.0 / Math.PI;
-
-        double[] LatLonToVector(double lat, double lon)
+        static double[] Normalize(double[] v)
         {
-            double φ = DegToRad(lat);
-            double λ = DegToRad(lon);
-            return new[]
-            {
-        Math.Cos(φ) * Math.Cos(λ),
-        Math.Cos(φ) * Math.Sin(λ),
-        Math.Sin(φ)
-    };
+            double n = Math.Sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+            return new[] { v[0] / n, v[1] / n, v[2] / n };
         }
 
-        double[] Cross(double[] a, double[] b)
+        static double[] Cross(double[] a, double[] b)
         {
             return new[]
             {
@@ -386,48 +377,86 @@ namespace MissionPlanner.Utilities
     };
         }
 
-        double[] Normalize(double[] v)
+        static double[] LatLonToUnit(double lat, double lon)
         {
-            double d = Math.Sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-            return new[] { v[0] / d, v[1] / d, v[2] / d };
+            double φ = DegToRad(lat);
+            double λ = DegToRad(lon);
+            return new[]
+            {
+        Math.Cos(φ)*Math.Cos(λ),
+        Math.Cos(φ)*Math.Sin(λ),
+        Math.Sin(φ)
+    };
         }
 
-        double[] GreatCircleNormal(double lat, double lon, double bearingDeg)
+        // Nagy-kör sík normálja adott pont + bearing alapján
+        static double[] GreatCircleNormal(double lat, double lon, double bearingDeg)
         {
             double φ = DegToRad(lat);
             double λ = DegToRad(lon);
             double θ = DegToRad(bearingDeg);
 
+            // Lokális É (north) és K (east) egységvektorok
             double[] north = { -Math.Sin(φ) * Math.Cos(λ), -Math.Sin(φ) * Math.Sin(λ), Math.Cos(φ) };
             double[] east = { -Math.Sin(λ), Math.Cos(λ), 0 };
 
-            double[] direction =
+            // Bearing irány a lokális érintősíkon
+            double[] dir =
             {
-        east[0]*Math.Sin(θ) + north[0]*Math.Cos(θ),
-        east[1]*Math.Sin(θ) + north[1]*Math.Cos(θ),
-        east[2]*Math.Sin(θ) + north[2]*Math.Cos(θ)
+        east[0]*Math.Sin(θ)  + north[0]*Math.Cos(θ),
+        east[1]*Math.Sin(θ)  + north[1]*Math.Cos(θ),
+        east[2]*Math.Sin(θ)  + north[2]*Math.Cos(θ)
     };
 
-            var p = LatLonToVector(lat, lon);
-
-            return Cross(p, direction);
+            // Sík normál = pontvektor × irányvektor
+            var p = LatLonToUnit(lat, lon);
+            return Normalize(Cross(p, dir));
         }
 
-        public void BearingIntersectionSpherical(
+        static double AngularDistance(double[] a, double[] b)
+        {
+            // gömbi szög távolság (radian)
+            double dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+            dot = Math.Max(-1.0, Math.Min(1.0, dot));
+            return Math.Acos(dot);
+        }
+
+        // ✅ A mindenhol működő metszés
+        public static bool BearingIntersectionGlobal(
             double lat1, double lon1, double bearing1,
             double lat2, double lon2, double bearing2,
             out double outLat, out double outLon)
         {
+            // 1) Nagy-kör síkok normáljai
             var n1 = GreatCircleNormal(lat1, lon1, bearing1);
             var n2 = GreatCircleNormal(lat2, lon2, bearing2);
 
-            var p = Cross(n1, n2);
-            var pnorm = Normalize(p);
+            // 2) Metszés: két antipodális pont
+            var p = Normalize(Cross(n1, n2));
+            var p2 = new[] { -p[0], -p[1], -p[2] };
 
-            outLat = RadToDeg(Math.Asin(pnorm[2]));
-            outLon = RadToDeg(Math.Atan2(pnorm[1], pnorm[0]));
+            // 3) Válaszd ki a HELYES pontot:
+            //    azt, amelyik „előrefelé esik” mindkét bearing irányában
+            var a1 = LatLonToUnit(lat1, lon1);
+            var a2 = LatLonToUnit(lat2, lon2);
+
+            // Heurisztika: kisebb össz-szögeltérés a két iránytól
+            double score(double[] cand)
+            {
+                // irányeltérés a VOR1 és VOR2 pontokhoz képest
+                // (minél kisebb, annál jobb)
+                double s1 = AngularDistance(cand, a1);
+                double s2 = AngularDistance(cand, a2);
+                return s1 + s2;
+            }
+
+            var chosen = score(p) <= score(p2) ? p : p2;
+
+            // 4) Vissza LAT/LON-ba
+            outLat = RadToDeg(Math.Asin(chosen[2]));
+            outLon = RadToDeg(Math.Atan2(chosen[1], chosen[0]));
+            return true;
         }
-
 
     }
 }

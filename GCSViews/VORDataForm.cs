@@ -67,7 +67,12 @@ namespace MissionPlanner.GCSViews
 
         private void btn_SetArduParametersTOExtNAV_Click(object sender, EventArgs e)
         {
+            //MainV2.instance.FlightData._VORNav.
+        }
 
+        private void btn_HideBlueLines_Click(object sender, EventArgs e)
+        {
+            MainV2.instance.FlightData.DrawBlueLines = !MainV2.instance.FlightData.DrawBlueLines;
         }
 
         //int calcDotCount = 0;

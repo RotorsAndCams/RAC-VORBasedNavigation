@@ -37,6 +37,7 @@
             this.btn_Error = new System.Windows.Forms.Button();
             this.btn_Filtering = new System.Windows.Forms.Button();
             this.btn_SetArduParametersTOExtNAV = new System.Windows.Forms.Button();
+            this.btn_HideBlueLines = new System.Windows.Forms.Button();
             this.tlp_Base.SuspendLayout();
             this.pnl_UP.SuspendLayout();
             this.pnl_Down.SuspendLayout();
@@ -103,6 +104,7 @@
             // 
             // pnl_Down
             // 
+            this.pnl_Down.Controls.Add(this.btn_HideBlueLines);
             this.pnl_Down.Controls.Add(this.btn_SetArduParametersTOExtNAV);
             this.pnl_Down.Controls.Add(this.btn_SendExtPosToFC);
             this.pnl_Down.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -119,6 +121,7 @@
             this.btn_SendExtPosToFC.TabIndex = 2;
             this.btn_SendExtPosToFC.Text = "Send ext pos to FC";
             this.btn_SendExtPosToFC.UseVisualStyleBackColor = true;
+            this.btn_SendExtPosToFC.Visible = false;
             this.btn_SendExtPosToFC.Click += new System.EventHandler(this.btn_SendExtPosToFC_Click);
             // 
             // btn_Error
@@ -149,13 +152,24 @@
             this.btn_SetArduParametersTOExtNAV.TabIndex = 2;
             this.btn_SetArduParametersTOExtNAV.Text = "Set parameters to ext pos";
             this.btn_SetArduParametersTOExtNAV.UseVisualStyleBackColor = true;
+            this.btn_SetArduParametersTOExtNAV.Visible = false;
             this.btn_SetArduParametersTOExtNAV.Click += new System.EventHandler(this.btn_SetArduParametersTOExtNAV_Click);
+            // 
+            // btn_HideBlueLines
+            // 
+            this.btn_HideBlueLines.Location = new System.Drawing.Point(6, 3);
+            this.btn_HideBlueLines.Name = "btn_HideBlueLines";
+            this.btn_HideBlueLines.Size = new System.Drawing.Size(168, 77);
+            this.btn_HideBlueLines.TabIndex = 3;
+            this.btn_HideBlueLines.Text = "lines from VOR stations";
+            this.btn_HideBlueLines.UseVisualStyleBackColor = true;
+            this.btn_HideBlueLines.Click += new System.EventHandler(this.btn_HideBlueLines_Click);
             // 
             // VORDataForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1590, 699);
+            this.ClientSize = new System.Drawing.Size(1174, 498);
             this.Controls.Add(this.tlp_Base);
             this.Name = "VORDataForm";
             this.Text = "VORDataForm";
@@ -177,5 +191,6 @@
         private System.Windows.Forms.Button btn_SendExtPosToFC;
         private System.Windows.Forms.Panel pnl_UP;
         private System.Windows.Forms.Button btn_SetArduParametersTOExtNAV;
+        private System.Windows.Forms.Button btn_HideBlueLines;
     }
 }

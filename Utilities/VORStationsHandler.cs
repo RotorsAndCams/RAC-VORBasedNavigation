@@ -24,7 +24,8 @@ namespace MissionPlanner.Utilities
                 new VORStation("PTB", "PUSZTASZABOLCS VOR","47.152222", "18.742222", 117.10),  //"470908N", "0184432E"
                 new VORStation("SAG", "SAJOHIDVEG VOR",    "48.008056", "20.996389", 114.40),  //"480029N", "0205947E"
                 new VORStation("SVR", "SAGVAR VOR",        "46.828056", "18.117778", 117.70),  //"464941N", "0180704E"
-                new VORStation("TPS", "TAPIOSAP VOR",      "47.493333", "19.446111", 115.90)   //"472936N", "0192646E"
+                new VORStation("TPS", "TAPIOSAP VOR",      "47.493333", "19.446111", 115.90),   //"472936N", "0192646E"
+                new VORStation("NYR", "NYIREGYHAZA VOR",   "47.991199", "21.692600", 116.10)
             };
 
         }

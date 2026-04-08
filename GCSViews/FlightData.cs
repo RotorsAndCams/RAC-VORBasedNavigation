@@ -33,6 +33,7 @@ using LogAnalyzer = MissionPlanner.Utilities.LogAnalyzer;
 using TableLayoutPanelCellPosition = System.Windows.Forms.TableLayoutPanelCellPosition;
 using UnauthorizedAccessException = System.UnauthorizedAccessException;
 using SixLabors.ImageSharp.PixelFormats;
+using System.Reflection.Metadata;
 
 // written by michael oborne
 
@@ -1471,13 +1472,51 @@ namespace MissionPlanner.GCSViews
 
             }
 
+            DrawCalculatedPosition();
+
+            if (DrawBlueLines)
+            {
+                DrawLineBetweenPoints(twoClosest[0].LatitudeWgs84, twoClosest[0].LongitudeWgs84, MainV2.comPort.MAV.cs.lat, MainV2.comPort.MAV.cs.lng, Color.DarkBlue);
+                DrawLineBetweenPoints(twoClosest[1].LatitudeWgs84, twoClosest[1].LongitudeWgs84, MainV2.comPort.MAV.cs.lat, MainV2.comPort.MAV.cs.lng, Color.DarkBlue);
+            }
+            
+
+            DrawLineBetweenPoints(twoClosest[0].LatitudeWgs84, twoClosest[0].LongitudeWgs84, _VORNav.CalculatedLat, _VORNav.CalculatedLon, Color.White);
+            DrawLineBetweenPoints(twoClosest[1].LatitudeWgs84, twoClosest[1].LongitudeWgs84, _VORNav.CalculatedLat, _VORNav.CalculatedLon, Color.White);
+        }
+
+        public bool DrawBlueLines = false;
+
+        private void DrawCalculatedPosition()
+        {
+
+            if (gMapControl1.InvokeRequired)
+            {
+                gMapControl1.Invoke(new Action(DrawCalculatedPosition));
+                return;
+            }
 
 
-            DrawLineBetweenPoints(twoClosest[0].LatitudeWgs84, twoClosest[0].LongitudeWgs84, MainV2.comPort.MAV.cs.lat, MainV2.comPort.MAV.cs.lng, Color.DarkBlue);
-            DrawLineBetweenPoints(twoClosest[1].LatitudeWgs84, twoClosest[1].LongitudeWgs84, MainV2.comPort.MAV.cs.lat, MainV2.comPort.MAV.cs.lng, Color.DarkBlue);
+            var mkr = VOROverlay.Markers.FirstOrDefault(m => m.ToolTipText.Contains("calculated"));
 
-            DrawLineBetweenPoints(twoClosest[0].LatitudeWgs84, twoClosest[0].LongitudeWgs84, _VORNav.CalculatedLat, _VORNav.CalculatedLon, Color.DarkGreen);
-            DrawLineBetweenPoints(twoClosest[1].LatitudeWgs84, twoClosest[1].LongitudeWgs84, _VORNav.CalculatedLat, _VORNav.CalculatedLon, Color.DarkGreen);
+            if (mkr != null)
+                VOROverlay.Markers.Remove(mkr);
+            
+
+
+
+            var marker = new GMarkerGoogle(new PointLatLng(_VORNav.CalculatedLat, _VORNav.CalculatedLon), GMarkerGoogleType.yellow_dot)
+            {
+                ToolTipText = "calculated position: " + "\n" + "lat: " + _VORNav.CalculatedLat + " lng: " + _VORNav.CalculatedLon,
+                ToolTipMode = MarkerTooltipMode.Always
+            };
+
+            VOROverlay.Markers.Add(marker);
+
+            if (!MainV2.instance.FlightData.gMapControl1.Overlays.Contains(VOROverlay))
+                gMapControl1.Overlays.Add(VOROverlay);
+
+            gMapControl1.UpdateMarkerLocalPosition(marker);
         }
 
         public void DrawLineBetweenPoints(double lat1, double lon1, double lat2, double lon2, Color color)
